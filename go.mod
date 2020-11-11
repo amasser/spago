@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/dgraph-io/badger/v2 v2.0.3
+	github.com/dlclark/regexp2 v1.4.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/protobuf v1.4.2
