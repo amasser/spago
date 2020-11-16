@@ -11,6 +11,8 @@ import (
 	"github.com/nlpodyssey/spago/pkg/nlp/tokenizers/models/bpemodel"
 	"github.com/nlpodyssey/spago/pkg/nlp/tokenizers/normalizers/normalizedstring"
 	"github.com/nlpodyssey/spago/pkg/nlp/tokenizers/pretokenizers/bytelevelpretokenizer"
+	"github.com/nlpodyssey/spago/pkg/nlp/tokenizers/vocabulary"
+	"path/filepath"
 )
 
 var _ tokenizers.Tokenizer = &BPETokenizer{}
@@ -30,6 +32,53 @@ func New(
 		preTokenizer: preTokenizer,
 		model:        model,
 	}
+}
+
+const (
+	defaultCacheCapacity           = 0
+	defaultDropout                 = 0.0
+	defaultUnknownToken            = ""
+	defaultContinuingSubwordPrefix = ""
+	defaultEndOfWordSuffix         = ""
+	defaultPrefixSpaceEnabled      = false
+)
+
+// NewFromModelFolder returns a new BPETokenizer built from a
+// pre-trained Roberta-compatible model, given the path to the
+// folder containing the separate model and configuration files.
+func NewFromModelFolder(path string) (*BPETokenizer, error) {
+	vocabularyFilename := filepath.Join(path, "vocab.json")
+	vocab, err := vocabulary.FromJSONFile(vocabularyFilename)
+	if err != nil {
+		return nil, fmt.Errorf("loading vocabulary from file %s: %v", vocabularyFilename, err)
+	}
+
+	mergesFilename := filepath.Join(path, "merges.txt")
+	merges, err := bpemodel.MergeMapFromFile(
+		mergesFilename,
+		vocab,
+		len(defaultContinuingSubwordPrefix),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("loading merges from file %s: %v", mergesFilename, err)
+	}
+
+	preTokenizer := bytelevelpretokenizer.NewByteLevelPreTokenizer(
+		bytelevelpretokenizer.DefaultSplittingRegexp,
+		defaultPrefixSpaceEnabled, // TODO: read from optional config?
+	)
+
+	model := bpemodel.NewBpeModel(
+		vocab,
+		merges,
+		defaultCacheCapacity,
+		defaultDropout,
+		defaultUnknownToken,
+		defaultContinuingSubwordPrefix,
+		defaultEndOfWordSuffix,
+	)
+
+	return New(preTokenizer, model), nil
 }
 
 // Tokenize performs byte-level pre-tokenization and BPE tokenization.
